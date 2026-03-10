@@ -7,6 +7,37 @@
     <groupId>cn.dicraft</groupId>
     <artifactId>dicraft-framework-spi-lock</artifactId>
     <version>1.0.0-DEV-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>dicraft-distributed-lock</name>
+    <description>A declarative distributed lock component based on Redisson, providing annotation-driven locking with SpEL support and Spring Boot autoconfiguration.</description>
+    <url>https://github.com/DiCraft-Jerry/dicraft-distributed-lock</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/DiCraft-Jerry/dicraft-distributed-lock</url>
+        <connection>scm:git:git://github.com/DiCraft-Jerry/dicraft-distributed-lock.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/DiCraft-Jerry/dicraft-distributed-lock.git</developerConnection>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>烛远</name>
+            <url>https://github.com/DiCraft-Jerry</url>
+        </developer>
+    </developers>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/DiCraft-Jerry/dicraft-distributed-lock/issues</url>
+    </issueManagement>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
