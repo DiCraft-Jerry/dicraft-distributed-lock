@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
  * These values serve as fallback when the annotation does not specify
  * {@code leaseTime} or {@code waitTime} explicitly.
  * <p>
- * Priority: annotation value > global config > default value.
+ * Priority: annotation value &gt; global config &gt; default value.
  *
  * @author 烛远
  * @see cn.dicraft.annotation.DistributeLock
