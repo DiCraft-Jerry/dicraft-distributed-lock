@@ -25,9 +25,10 @@ public class DistributeLockAutoConfiguration {
     @ConditionalOnMissingBean
     public DistributeLockProperties distributeLockProperties(
             @Value("${dicraft.lock.lease-time:#{null}}") Long leaseTime,
-            @Value("${dicraft.lock.wait-time:#{null}}") Long waitTime
+            @Value("${dicraft.lock.wait-time:#{null}}") Long waitTime,
+            @Value("${dicraft.lock.key-prefix:#{null}}") String keyPrefix
     ) {
-        return new DistributeLockProperties(leaseTime, waitTime);
+        return new DistributeLockProperties(leaseTime, waitTime, keyPrefix);
     }
 
     @Bean
