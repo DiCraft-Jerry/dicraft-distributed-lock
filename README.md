@@ -7,6 +7,7 @@
 
 [中文文档](README_zh.md) ｜ English
 
+distributedLock Tool
 A declarative distributed lock component based on Redisson, providing method-level distributed locking via annotation + Spring AOP.
 
 ## Highlights
