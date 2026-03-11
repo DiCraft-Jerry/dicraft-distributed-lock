@@ -25,7 +25,7 @@
 <dependency>
     <groupId>cn.dicraft</groupId>
     <artifactId>dicraft-framework-spi-lock</artifactId>
-    <version>1.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -64,13 +64,14 @@ public void processPayment(String paymentId) { ... }
 
 ### 全局配置
 
-在 `application.yml` 或 `application.properties` 中配置全局的租期和等待时长：
+在 `application.yml` 或 `application.properties` 中配置全局的租期、等待时长和 Key 前缀：
 
 ```yaml
 dicraft:
   lock:
     lease-time: 30000  # 全局锁租期（毫秒）
     wait-time: 5000    # 全局加锁等待时长（毫秒）
+    key-prefix: my-app # 全局锁 Key 前缀（可选）
 ```
 
 **配置优先级**: 注解指定 > 全局配置 > 默认值（`-1`）
@@ -85,6 +86,17 @@ dicraft:
 
 最终锁 Key 格式为 `scene#key`，其中 key 通过 SpEL 解析得到。若 key 为空，则直接使用 scene 作为锁 Key。
 
+配置 `dicraft.lock.key-prefix` 后，前缀会以冒号分隔拼接在最前面：
+
+| key-prefix | scene | key | 最终锁 Key |
+|------------|-------|-----|-----------|
+| *（未设置）* | `order` | `#orderId` → `123` | `order#123` |
+| *（未设置）* | `order` | *（空）* | `order` |
+| `my-app` | `order` | `#orderId` → `123` | `my-app:order#123` |
+| `my-app` | `order` | *（空）* | `my-app:order` |
+
+当多个微服务共享同一个 Redis 实例时，通过配置不同的前缀可以避免锁 Key 冲突。
+
 ### 加锁策略
 
 | waitTime | leaseTime | 行为 |
@@ -97,7 +109,8 @@ dicraft:
 ## 前置依赖
 
 - Java 8+
-- Spring Context 5.x
+- Spring Context 5.x / 6.X
+- Spring Boot 2.x / 3.x（自动配置兼容两个版本）
 - Redisson 3.x（需自行配置 `RedissonClient` Bean）
 
 ## 许可证

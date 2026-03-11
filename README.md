@@ -25,7 +25,7 @@ A declarative distributed lock component based on Redisson, providing method-lev
 <dependency>
     <groupId>cn.dicraft</groupId>
     <artifactId>dicraft-framework-spi-lock</artifactId>
-    <version>1.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -64,13 +64,14 @@ public void processPayment(String paymentId) { ... }
 
 ### Global Configuration
 
-Configure global lease time and wait time in `application.yml` or `application.properties`:
+Configure global lease time, wait time and key prefix in `application.yml` or `application.properties`:
 
 ```yaml
 dicraft:
   lock:
     lease-time: 30000  # global lock lease time (ms)
     wait-time: 5000    # global lock wait time (ms)
+    key-prefix: my-app # global lock key prefix (optional)
 ```
 
 **Configuration Priority**: Annotation > Global Config > Default (`-1`)
@@ -85,6 +86,17 @@ dicraft:
 
 The final lock key format is `scene#key`, where `key` is resolved via SpEL. If `key` is empty, only `scene` is used as the lock key.
 
+When `dicraft.lock.key-prefix` is configured, the prefix is prepended with a colon separator:
+
+| key-prefix | scene | key | Final Lock Key |
+|------------|-------|-----|----------------|
+| *(not set)* | `order` | `#orderId` → `123` | `order#123` |
+| *(not set)* | `order` | *(empty)* | `order` |
+| `my-app` | `order` | `#orderId` → `123` | `my-app:order#123` |
+| `my-app` | `order` | *(empty)* | `my-app:order` |
+
+This is useful when multiple microservices share the same Redis instance — each service can use its own prefix to avoid lock key collisions.
+
 ### Locking Strategy
 
 | waitTime | leaseTime | Behavior |
@@ -97,7 +109,8 @@ The final lock key format is `scene#key`, where `key` is resolved via SpEL. If `
 ## Prerequisites
 
 - Java 8+
-- Spring Context 5.x
+- Spring Context 5.x / 6.X
+- Spring Boot 2.x / 3.x (auto-configuration compatible with both)
 - Redisson 3.x (requires a `RedissonClient` bean configured by the user)
 
 ## License

@@ -57,15 +57,16 @@ public class DistributeLockAspect {
 
         String scene = distributeLock.scene(),
                 key = distributeLock.key();
+        String keyPrefix = resolveKeyPrefix(properties.getKeyPrefix());
         long leaseTime = resolveTime(distributeLock.leaseTime(), properties.getLeaseTime(), DistributeLockConfigConstant.DEFAULT_LEASE_TIME),
                 waitTime = resolveTime(distributeLock.waitTime(), properties.getWaitTime(), DistributeLockConfigConstant.DEFAULT_WAIT_TIME);
 
         String lockKey;
         if (StringUtils.isNotBlank(key)) {
             String parsedKey = parseKeyExpression(key, buildArgMap(getParameterNames(method), pjp.getArgs()));
-            lockKey = scene + "#" + parsedKey;
+            lockKey = keyPrefix + scene + "#" + parsedKey;
         } else {
-            lockKey = scene;
+            lockKey = keyPrefix + scene;
         }
 
         String threadName = Thread.currentThread().getName();
@@ -119,6 +120,17 @@ public class DistributeLockAspect {
                 log.warn("[DistributeLock] Lock not held by current thread on release, lockKey={}, thread={}#{}", lockKey, threadName, threadId);
             }
         }
+    }
+
+    /**
+     * Resolves the effective key prefix.
+     * Returns the prefix with a trailing colon separator, or an empty string if no prefix is configured.
+     */
+    private String resolveKeyPrefix(String globalKeyPrefix) {
+        if (StringUtils.isNotBlank(globalKeyPrefix)) {
+            return globalKeyPrefix + ":";
+        }
+        return DistributeLockConfigConstant.DEFAULT_KEY_PREFIX;
     }
 
     /**

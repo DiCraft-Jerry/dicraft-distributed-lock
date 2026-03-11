@@ -28,4 +28,12 @@ public class DistributeLockConfigConstant {
      * Waits indefinitely until the lock is acquired.
      */
     public static final long DEFAULT_WAIT_TIME = -1;
+
+    /**
+     * Default key prefix (empty string).
+     * <p>
+     * When no prefix is configured, the lock key will not contain any prefix,
+     * preserving the original key format ({@code scene#key}).
+     */
+    public static final String DEFAULT_KEY_PREFIX = "";
 }

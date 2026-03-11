@@ -32,7 +32,7 @@ class DistributeLockAspectTest {
 
     @BeforeEach
     void setUp() {
-        defaultProperties = new DistributeLockProperties(null, null);
+        defaultProperties = new DistributeLockProperties(null, null, null);
         lenient().when(pjp.getSignature()).thenReturn(methodSignature);
         lenient().when(redissonClient.getLock(anyString())).thenReturn(rLock);
     }
@@ -163,6 +163,68 @@ class DistributeLockAspectTest {
         verify(redissonClient).getLock("order#order-123");
     }
 
+    // ===== Key Prefix =====
+
+    @Test
+    void withKeyPrefix_lockKeyContainsPrefix() throws Throwable {
+        mockMethod("defaultAll");
+        mockLockHeld();
+        when(pjp.proceed()).thenReturn("ok");
+
+        DistributeLockProperties prefixProps = new DistributeLockProperties(null, null, "my-app");
+        createAspect(prefixProps).process(pjp);
+
+        verify(redissonClient).getLock("my-app:test-scene");
+    }
+
+    @Test
+    void withKeyPrefix_spelKey_lockKeyContainsPrefixAndParsedValue() throws Throwable {
+        mockMethod("withSpelKey", String.class);
+        mockLockHeld();
+        when(pjp.getArgs()).thenReturn(new Object[]{"order-123"});
+        when(pjp.proceed()).thenReturn("ok");
+
+        DistributeLockProperties prefixProps = new DistributeLockProperties(null, null, "my-app");
+        createAspect(prefixProps).process(pjp);
+
+        verify(redissonClient).getLock("my-app:order#order-123");
+    }
+
+    @Test
+    void withNullKeyPrefix_lockKeyHasNoPrefix() throws Throwable {
+        mockMethod("defaultAll");
+        mockLockHeld();
+        when(pjp.proceed()).thenReturn("ok");
+
+        createAspect(defaultProperties).process(pjp);
+
+        verify(redissonClient).getLock("test-scene");
+    }
+
+    @Test
+    void withEmptyKeyPrefix_lockKeyHasNoPrefix() throws Throwable {
+        mockMethod("defaultAll");
+        mockLockHeld();
+        when(pjp.proceed()).thenReturn("ok");
+
+        DistributeLockProperties emptyPrefixProps = new DistributeLockProperties(null, null, "");
+        createAspect(emptyPrefixProps).process(pjp);
+
+        verify(redissonClient).getLock("test-scene");
+    }
+
+    @Test
+    void withBlankKeyPrefix_lockKeyHasNoPrefix() throws Throwable {
+        mockMethod("defaultAll");
+        mockLockHeld();
+        when(pjp.proceed()).thenReturn("ok");
+
+        DistributeLockProperties blankPrefixProps = new DistributeLockProperties(null, null, "   ");
+        createAspect(blankPrefixProps).process(pjp);
+
+        verify(redissonClient).getLock("test-scene");
+    }
+
     // ===== Config Priority =====
 
     @Test
@@ -172,7 +234,7 @@ class DistributeLockAspectTest {
         when(pjp.proceed()).thenReturn("ok");
         when(rLock.tryLock(3000L, 5000L, TimeUnit.MILLISECONDS)).thenReturn(true);
 
-        DistributeLockProperties globalProps = new DistributeLockProperties(9999L, 8888L);
+        DistributeLockProperties globalProps = new DistributeLockProperties(9999L, 8888L, null);
         createAspect(globalProps).process(pjp);
 
         verify(rLock).tryLock(3000L, 5000L, TimeUnit.MILLISECONDS);
@@ -185,7 +247,7 @@ class DistributeLockAspectTest {
         when(pjp.proceed()).thenReturn("ok");
         when(rLock.tryLock(3000L, 5000L, TimeUnit.MILLISECONDS)).thenReturn(true);
 
-        DistributeLockProperties globalProps = new DistributeLockProperties(5000L, 3000L);
+        DistributeLockProperties globalProps = new DistributeLockProperties(5000L, 3000L, null);
         createAspect(globalProps).process(pjp);
 
         verify(rLock).tryLock(3000L, 5000L, TimeUnit.MILLISECONDS);

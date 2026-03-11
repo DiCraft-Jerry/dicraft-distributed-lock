@@ -56,6 +56,35 @@ class DistributeLockAutoConfigurationTest {
                     DistributeLockProperties props = context.getBean(DistributeLockProperties.class);
                     assertThat(props.getLeaseTime()).isNull();
                     assertThat(props.getWaitTime()).isNull();
+                    assertThat(props.getKeyPrefix()).isNull();
+                });
+    }
+
+    @Test
+    void withKeyPrefix_valueInjected() {
+        contextRunner
+                .withBean(RedissonClient.class, () -> mock(RedissonClient.class))
+                .withPropertyValues("dicraft.lock.key-prefix=my-app")
+                .run(context -> {
+                    DistributeLockProperties props = context.getBean(DistributeLockProperties.class);
+                    assertThat(props.getKeyPrefix()).isEqualTo("my-app");
+                });
+    }
+
+    @Test
+    void withAllProperties_allValuesInjected() {
+        contextRunner
+                .withBean(RedissonClient.class, () -> mock(RedissonClient.class))
+                .withPropertyValues(
+                        "dicraft.lock.lease-time=30000",
+                        "dicraft.lock.wait-time=5000",
+                        "dicraft.lock.key-prefix=my-app"
+                )
+                .run(context -> {
+                    DistributeLockProperties props = context.getBean(DistributeLockProperties.class);
+                    assertThat(props.getLeaseTime()).isEqualTo(30000L);
+                    assertThat(props.getWaitTime()).isEqualTo(5000L);
+                    assertThat(props.getKeyPrefix()).isEqualTo("my-app");
                 });
     }
 }
