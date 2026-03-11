@@ -4,12 +4,11 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: write
-
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -26,6 +25,6 @@ jobs:
         run: mvn clean package -DskipTests
 
       - name: Upload JAR to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: target/dicraft-framework-spi-lock-*.jar
+        run: gh release upload "${{ github.event.release.tag_name }}" target/dicraft-framework-spi-lock-*.jar --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
