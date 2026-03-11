@@ -109,7 +109,8 @@ This is useful when multiple microservices share the same Redis instance — eac
 ## Prerequisites
 
 - Java 8+
-- Spring Context 5.x
+- Spring Context 5.x / 6.X
+- Spring Boot 2.x / 3.x (auto-configuration compatible with both)
 - Redisson 3.x (requires a `RedissonClient` bean configured by the user)
 
 ## License

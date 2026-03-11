@@ -109,7 +109,8 @@ dicraft:
 ## 前置依赖
 
 - Java 8+
-- Spring Context 5.x
+- Spring Context 5.x / 6.X
+- Spring Boot 2.x / 3.x（自动配置兼容两个版本）
 - Redisson 3.x（需自行配置 `RedissonClient` Bean）
 
 ## 许可证
