@@ -38,7 +38,7 @@ public void createOrder(String orderId) {
 }
 ```
 
-<details>
+<details open>
 <summary>更多示例</summary>
 
 ```java
@@ -49,6 +49,16 @@ public void syncInventory() { ... }
 // 自定义租期和等待时长
 @DistributeLock(scene = "payment", key = "#paymentId", leaseTime = 10000, waitTime = 5000)
 public void processPayment(String paymentId) { ... }
+
+// 多 key 锁：key 按字典序排列后用 "." 拼接
+// 如 keys 解析为 "acc-A" 和 "acc-B" → 锁 key 为 "transfer#acc-A.acc-B"
+@DistributeLock(scene = "transfer", keys = {"#fromAccountId", "#toAccountId"})
+public void transfer(String fromAccountId, String toAccountId, BigDecimal amount) { ... }
+
+// 列表/数组作为 key：元素用 "." 拼接
+// 如 ids = [3, 1, 2] → 锁 key 为 "batch-delete#1.2.3"（元素排序后拼接）
+@DistributeLock(scene = "batch-delete", keys = {"#ids"})
+public void batchDelete(List<Long> ids) { ... }
 ```
 
 </details>
@@ -59,6 +69,7 @@ public void processPayment(String paymentId) { ... }
 |------|------|--------|------|
 | `scene` | String | 必填 | 锁的业务场景标识 |
 | `key` | String | `""` | 锁参数，支持 SpEL 表达式 |
+| `keys` | String[] | `{}` | 多个锁参数（SpEL），求值后按字典序排列并用 `.` 拼接，优先级高于 `key` |
 | `leaseTime` | long | 未设置 | 锁租期（毫秒），未设置时使用全局配置或默认值 |
 | `waitTime` | long | 未设置 | 加锁等待时长（毫秒），未设置时使用全局配置或默认值 |
 
@@ -97,6 +108,36 @@ dicraft:
 
 当多个微服务共享同一个 Redis 实例时，通过配置不同的前缀可以避免锁 Key 冲突。
 
+#### 多 Key（`keys`）解析规则
+
+使用 `keys` 代替 `key` 时，每个 SpEL 表达式独立求值，结果按**字典序排列**后用 `.` 拼接：
+
+```java
+@DistributeLock(scene = "transfer", keys = {"#fromAccountId", "#toAccountId"})
+public void transfer(String fromAccountId, String toAccountId, BigDecimal amount) { ... }
+```
+
+| fromAccountId | toAccountId | 最终锁 Key |
+|---------------|-------------|-----------|
+| `"acc-A"` | `"acc-B"` | `transfer#acc-A.acc-B` |
+| `"acc-B"` | `"acc-A"` | `transfer#acc-A.acc-B` |
+
+字典序排列确保相同的资源集合无论参数顺序如何，始终生成相同的锁 Key，有助于防止因加锁顺序不一致导致的死锁。
+
+当 key 表达式求值结果为**列表（Collection）或数组（Array）**时，其元素会自动用 `.` 拼接为一个 key 段：
+
+```java
+@DistributeLock(scene = "batch-delete", keys = {"#ids"})
+public void batchDelete(List<Long> ids) { ... }
+```
+
+| ids | 最终锁 Key |
+|-----|-----------|
+| `[3, 1, 2]` | `batch-delete#1.2.3` |
+| `[1, 2, 3]` | `batch-delete#1.2.3` |
+
+由于所有 key 段都经过排序，输入集合的元素顺序不影响结果 — `[3, 1, 2]` 和 `[1, 2, 3]` 会生成相同的锁 Key。
+
 ### 加锁策略
 
 | waitTime | leaseTime | 行为 |
@@ -105,6 +146,18 @@ dicraft:
 | `-1`（默认） | 自定义 | `lock(leaseTime, ms)` — 无限等待 + 固定租期 |
 | 自定义 | `-1`（默认） | `tryLock(waitTime, ms)` — 限时等待 + Watchdog 续期 |
 | 自定义 | 自定义 | `tryLock(waitTime, leaseTime, ms)` — 限时等待 + 固定租期 |
+
+## 死锁注意事项
+
+每次 `@DistributeLock` 调用仅持有一把锁，且在 `finally` 块中释放，因此单次调用不会发生锁泄漏。
+
+但如果调用链中嵌套了多个 `@DistributeLock` 且锁的 key **不同**（如线程 A 先锁 `order#1` 再锁 `order#2`，线程 B 先锁 `order#2` 再锁 `order#1`），会形成环路等待导致死锁。
+
+**建议：**
+
+- 同一业务操作尽量只加一把锁
+- 若必须加多把锁，全项目约定统一的加锁顺序（如按 lockKey 字典序）
+- 使用 `keys` 时，解析后的 key 段会自动排序以生成确定性的锁 Key，降低因顺序不一致导致的死锁风险
 
 ## 前置依赖
 

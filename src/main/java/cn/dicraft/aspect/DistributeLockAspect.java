@@ -20,14 +20,37 @@ import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * AOP aspect for {@link DistributeLock} annotation.
  * Provides declarative distributed locking via Redisson.
+ *
+ * <p><b>Deadlock considerations:</b>
+ * Each invocation holds exactly one lock and releases it in a {@code finally} block,
+ * so lock leaks within a single call are not possible. However, if a call chain nests
+ * multiple {@code @DistributeLock} annotations with <em>different</em> keys (e.g. thread A
+ * locks {@code order#1} then {@code order#2}, while thread B locks {@code order#2} then
+ * {@code order#1}), a circular-wait deadlock can occur.
+ *
+ * <p><b>Recommendations:</b>
+ * <ul>
+ *   <li>Prefer acquiring a single lock per business operation whenever possible.</li>
+ *   <li>If multiple locks are unavoidable, establish a project-wide convention for
+ *       a consistent lock ordering (e.g. lexicographic order of lock keys).</li>
+ * </ul>
+ *
+ * <p>When multiple {@link DistributeLock#keys()} are specified, this aspect sorts the
+ * resolved key segments lexicographically before joining them. This ensures that the
+ * same set of resources always produces the same lock key regardless of the order in
+ * which they appear in the annotation, reducing the risk of ordering-related deadlocks.
  *
  * @author 烛远
  */
@@ -57,13 +80,22 @@ public class DistributeLockAspect {
 
         String scene = distributeLock.scene(),
                 key = distributeLock.key();
+        String[] keys = distributeLock.keys();
         String keyPrefix = resolveKeyPrefix(properties.getKeyPrefix());
         long leaseTime = resolveTime(distributeLock.leaseTime(), properties.getLeaseTime(), DistributeLockConfigConstant.DEFAULT_LEASE_TIME),
                 waitTime = resolveTime(distributeLock.waitTime(), properties.getWaitTime(), DistributeLockConfigConstant.DEFAULT_WAIT_TIME);
 
         String lockKey;
-        if (StringUtils.isNotBlank(key)) {
-            String parsedKey = parseKeyExpression(key, buildArgMap(getParameterNames(method), pjp.getArgs()));
+        if (keys != null && keys.length > 0) {
+            Map<String, Object> args = combineArgs(getParameterNames(method), pjp.getArgs());
+            String parsedKey = Arrays.stream(keys)
+                    .filter(StringUtils::isNotBlank)
+                    .map(keyExpression -> analyseKeyExpression(keyExpression, args))
+                    .sorted()
+                    .collect(Collectors.joining("."));
+            lockKey = StringUtils.isNotBlank(parsedKey) ? keyPrefix + scene + "#" + parsedKey : keyPrefix + scene;
+        } else if (StringUtils.isNotBlank(key)) {
+            String parsedKey = analyseKeyExpression(key, combineArgs(getParameterNames(method), pjp.getArgs()));
             lockKey = keyPrefix + scene + "#" + parsedKey;
         } else {
             lockKey = keyPrefix + scene;
@@ -147,22 +179,64 @@ public class DistributeLockAspect {
     }
 
     /**
-     * Evaluates a SpEL expression against the method arguments.
+     * Evaluates a SpEL expression against the method arguments and converts the result
+     * into a lock key segment. If the expression evaluates to a {@link Collection} or
+     * an array, the elements are joined with {@code "."} as the separator.
+     *
+     * @param keyExpression the SpEL expression string (e.g. {@code "#orderId"})
+     * @param variables     a map of parameter names to their runtime values
+     * @return the resolved key segment string
      */
-    private String parseKeyExpression(String keyExpression, Map<String, Object> variables) {
+    private String analyseKeyExpression(String keyExpression, Map<String, Object> variables) {
         EvaluationContext context = new StandardEvaluationContext();
         variables.forEach(context::setVariable);
 
         SpelExpressionParser parser = new SpelExpressionParser();
         Expression expression = parser.parseExpression(keyExpression);
-        return String.valueOf(expression.getValue(context));
+        Object value = expression.getValue(context);
+        return toKeySegment(value);
+    }
+
+    /**
+     * Converts a SpEL evaluation result into a key segment string.
+     * <ul>
+     *   <li>{@link Collection}: elements joined with {@code "."}</li>
+     *   <li>Array: elements joined with {@code "."}</li>
+     *   <li>{@code null}: empty string</li>
+     *   <li>Other types: {@link String#valueOf(Object)}</li>
+     * </ul>
+     *
+     * @param value the SpEL evaluation result
+     * @return the key segment string
+     */
+    private String toKeySegment(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof Collection) {
+            return ((Collection<?>) value).stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining("."));
+        }
+        if (value.getClass().isArray()) {
+            int len = Array.getLength(value);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < len; i++) {
+                if (i > 0) {
+                    sb.append('.');
+                }
+                sb.append(Array.get(value, i));
+            }
+            return sb.toString();
+        }
+        return String.valueOf(value);
     }
 
     private String[] getParameterNames(Method method) {
         return new DefaultParameterNameDiscoverer().getParameterNames(method);
     }
 
-    private Map<String, Object> buildArgMap(String[] parameterNames, Object[] args) {
+    private Map<String, Object> combineArgs(String[] parameterNames, Object[] args) {
         Map<String, Object> map = new HashMap<>();
         if (parameterNames != null) {
             for (int i = 0; i < parameterNames.length; i++) {
