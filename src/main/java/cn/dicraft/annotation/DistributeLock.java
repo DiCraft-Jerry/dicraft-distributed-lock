@@ -36,6 +36,21 @@ public @interface DistributeLock {
     String key() default "";
 
     /**
+     * Multiple lock key parameters, each evaluated as a SpEL expression.
+     * <p>
+     * The resolved values are sorted lexicographically and joined with {@code "."}
+     * to form the final key segment. For example, {@code keys = {"#userId", "#orderId"}}
+     * with values {@code "u1"} and {@code "o2"} produces the key segment {@code "o2.u1"}.
+     * <p>
+     * This attribute takes precedence over {@link #key()} — if {@code keys} is non-empty,
+     * {@code key} is ignored. Use either {@code key} (single) or {@code keys} (multiple),
+     * not both.
+     *
+     * @return an array of SpEL key expressions
+     */
+    String[] keys() default {};
+
+    /**
      * Lock lease time in milliseconds.
      * <p>
      * Priority: annotation value &gt; global config ({@code dicraft.lock.lease-time}) &gt; default (-1).

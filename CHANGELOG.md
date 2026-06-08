@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Cache `SpelExpressionParser` as a `static final` field to avoid repeated instantiation on every lock invocation
+
 ## [1.0.1] - 2026-03-11
 
 ### Added
@@ -12,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   - When configured, all lock keys are prefixed with `{prefix}:` (e.g. `my-app:order#123`)
   - Prevents key collisions across multiple microservices sharing the same Redis instance
   - No prefix added when not configured, preserving backward compatibility
+- Multi-key lock support via `keys` annotation attribute
+  - Each SpEL expression evaluated independently, results sorted lexicographically and joined with `.`
+  - Takes precedence over single `key` attribute
+  - Deterministic key ordering reduces deadlock risk when locking multiple resources
 - Spring Boot 3.x auto-configuration compatibility via `AutoConfiguration.imports`
   - Existing `spring.factories` retained for Spring Boot 2.x backward compatibility
 

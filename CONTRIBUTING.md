@@ -57,6 +57,7 @@ Examples:
 - All public APIs must have Javadoc in English
 - Keep comments and log messages in English
 - Avoid adding unnecessary dependencies
+- Cache thread-safe singletons (e.g. `SpelExpressionParser`, `DefaultParameterNameDiscoverer`) as `static final` fields rather than creating new instances per invocation
 
 ## Reporting Issues
 

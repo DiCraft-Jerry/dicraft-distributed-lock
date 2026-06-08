@@ -39,7 +39,7 @@ public void createOrder(String orderId) {
 }
 ```
 
-<details>
+<details open>
 <summary>More examples</summary>
 
 ```java
@@ -50,6 +50,16 @@ public void syncInventory() { ... }
 // Custom lease time and wait time
 @DistributeLock(scene = "payment", key = "#paymentId", leaseTime = 10000, waitTime = 5000)
 public void processPayment(String paymentId) { ... }
+
+// Multi-key lock: keys are sorted and joined with "."
+// e.g. keys resolved to "acc-A" and "acc-B" → lock key "transfer#acc-A.acc-B"
+@DistributeLock(scene = "transfer", keys = {"#fromAccountId", "#toAccountId"})
+public void transfer(String fromAccountId, String toAccountId, BigDecimal amount) { ... }
+
+// Collection/Array as key: elements are joined with "."
+// e.g. ids = [3, 1, 2] → lock key "batch-delete#1.2.3"  (elements sorted)
+@DistributeLock(scene = "batch-delete", keys = {"#ids"})
+public void batchDelete(List<Long> ids) { ... }
 ```
 
 </details>
@@ -60,6 +70,7 @@ public void processPayment(String paymentId) { ... }
 |-----------|------|---------|-------------|
 | `scene` | String | required | Business scene identifier for the lock |
 | `key` | String | `""` | Lock key parameter, supports SpEL expression |
+| `keys` | String[] | `{}` | Multiple lock key parameters (SpEL), sorted and joined with `.`. Takes precedence over `key` |
 | `leaseTime` | long | unset | Lock lease time (ms), falls back to global config or default |
 | `waitTime` | long | unset | Lock wait time (ms), falls back to global config or default |
 
@@ -98,6 +109,36 @@ When `dicraft.lock.key-prefix` is configured, the prefix is prepended with a col
 
 This is useful when multiple microservices share the same Redis instance — each service can use its own prefix to avoid lock key collisions.
 
+#### Multi-Key (`keys`) Resolution
+
+When `keys` is used instead of `key`, each SpEL expression is evaluated independently, and the resolved values are **sorted lexicographically** then joined with `.` to form the key segment:
+
+```java
+@DistributeLock(scene = "transfer", keys = {"#fromAccountId", "#toAccountId"})
+public void transfer(String fromAccountId, String toAccountId, BigDecimal amount) { ... }
+```
+
+| fromAccountId | toAccountId | Final Lock Key |
+|---------------|-------------|----------------|
+| `"acc-A"` | `"acc-B"` | `transfer#acc-A.acc-B` |
+| `"acc-B"` | `"acc-A"` | `transfer#acc-A.acc-B` |
+
+The lexicographic sorting ensures that the same set of resources always produces the same lock key, regardless of parameter order — helping prevent ordering-related deadlocks.
+
+When a key expression evaluates to a **Collection or Array**, its elements are automatically joined with `.` as a single key segment:
+
+```java
+@DistributeLock(scene = "batch-delete", keys = {"#ids"})
+public void batchDelete(List<Long> ids) { ... }
+```
+
+| ids | Final Lock Key |
+|-----|----------------|
+| `[3, 1, 2]` | `batch-delete#1.2.3` |
+| `[1, 2, 3]` | `batch-delete#1.2.3` |
+
+Since all key segments are sorted, the element order of the input collection does not matter — `[3, 1, 2]` and `[1, 2, 3]` produce the same lock key.
+
 ### Locking Strategy
 
 | waitTime | leaseTime | Behavior |
@@ -106,6 +147,18 @@ This is useful when multiple microservices share the same Redis instance — eac
 | `-1` (default) | custom | `lock(leaseTime, ms)` — wait indefinitely + fixed lease |
 | custom | `-1` (default) | `tryLock(waitTime, ms)` — timed wait + Watchdog renewal |
 | custom | custom | `tryLock(waitTime, leaseTime, ms)` — timed wait + fixed lease |
+
+## Deadlock Considerations
+
+Each `@DistributeLock` invocation holds exactly one lock and releases it in a `finally` block, so lock leaks within a single call are not possible.
+
+However, if a call chain nests multiple `@DistributeLock` annotations with **different keys** (e.g. thread A locks `order#1` then `order#2`, while thread B locks `order#2` then `order#1`), a circular-wait deadlock can occur.
+
+**Recommendations:**
+
+- Prefer acquiring a single lock per business operation whenever possible.
+- If multiple locks are unavoidable, establish a project-wide convention for consistent lock ordering (e.g. lexicographic order of lock keys).
+- When using `keys`, the resolved segments are automatically sorted to produce a deterministic lock key, reducing ordering-related deadlock risk.
 
 ## Prerequisites
 
