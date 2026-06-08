@@ -57,6 +57,7 @@ mvn clean test
 - 所有公开 API 必须使用英文编写 Javadoc
 - 注释和日志信息使用英文
 - 避免引入不必要的依赖
+- 线程安全的单例对象（如 `SpelExpressionParser`、`DefaultParameterNameDiscoverer`）应缓存为 `static final` 字段，避免每次调用重复创建
 
 ## 反馈问题
 

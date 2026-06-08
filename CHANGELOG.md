@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Cache `SpelExpressionParser` as a `static final` field to avoid repeated instantiation on every lock invocation
+
 ## [1.0.1] - 2026-03-11
 
 ### Added
