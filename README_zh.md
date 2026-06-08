@@ -7,6 +7,7 @@
 
 [English](README.md) ｜ 中文文档
 
+分布式锁工具
 基于 Redisson 的声明式分布式锁组件，通过注解 + Spring AOP 实现方法级别的分布式锁能力。
 
 ## 亮点
