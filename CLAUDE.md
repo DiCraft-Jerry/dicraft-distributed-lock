@@ -79,6 +79,7 @@ Auto-config registration exists in both:
 - **Conditional beans**: `@ConditionalOnBean`, `@ConditionalOnMissingBean`, `@ConditionalOnClass`
 - Dependencies are `provided` scope except `commons-lang3` (this is a starter library, not a fat JAR)
 - Constants class has a private constructor to prevent instantiation
+- Cache thread-safe singletons as `static final` fields (e.g. `SpelExpressionParser`, `DefaultParameterNameDiscoverer`)
 
 ### Three-tier config priority (used consistently)
 Annotation value > Global config (`dicraft.lock.*`) > Hardcoded default (`-1`)

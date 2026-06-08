@@ -60,6 +60,8 @@ import java.util.stream.Collectors;
 @Order(Integer.MIN_VALUE)
 public class DistributeLockAspect {
 
+    private static final SpelExpressionParser SPEL_PARSER = new SpelExpressionParser();
+
     private final RedissonClient redissonClient;
     private final DistributeLockProperties properties;
 
@@ -191,8 +193,7 @@ public class DistributeLockAspect {
         EvaluationContext context = new StandardEvaluationContext();
         variables.forEach(context::setVariable);
 
-        SpelExpressionParser parser = new SpelExpressionParser();
-        Expression expression = parser.parseExpression(keyExpression);
+        Expression expression = SPEL_PARSER.parseExpression(keyExpression);
         Object value = expression.getValue(context);
         return toKeySegment(value);
     }

@@ -79,6 +79,7 @@ cn.dicraft
 - **条件 Bean**：使用 `@ConditionalOnBean`、`@ConditionalOnMissingBean`、`@ConditionalOnClass`
 - 除 `commons-lang3` 外所有依赖均为 `provided` 作用域（这是 Starter 库，不是 Fat JAR）
 - 常量类使用 private 构造器防止实例化
+- 线程安全的单例对象缓存为 `static final` 字段（如 `SpelExpressionParser`、`DefaultParameterNameDiscoverer`）
 
 ### 三级配置优先级（始终遵循）
 注解值 > 全局配置（`dicraft.lock.*`）> 硬编码默认值（`-1`）
