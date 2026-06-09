@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- Unit tests for multi-key locking (`keys` attribute): sorted resolution, blank filtering, Collection/Array values, prefix integration, precedence over `key`
+
 ### Changed
 
 - Cache `SpelExpressionParser` and `DefaultParameterNameDiscoverer` as `static final` fields to avoid repeated instantiation
