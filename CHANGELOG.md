@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- Unit tests for multi-key locking (`keys` attribute): sorted resolution, blank filtering, Collection/Array values, prefix integration, precedence over `key`
+
 ### Changed
 
-- Cache `SpelExpressionParser` as a `static final` field to avoid repeated instantiation on every lock invocation
+- Cache `SpelExpressionParser` and `DefaultParameterNameDiscoverer` as `static final` fields to avoid repeated instantiation
+- Add warning log when method parameter names cannot be discovered, guiding users to compile with `-parameters` flag
 
 ## [1.0.1] - 2026-03-11
 

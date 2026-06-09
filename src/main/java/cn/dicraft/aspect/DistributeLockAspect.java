@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 public class DistributeLockAspect {
 
     private static final SpelExpressionParser SPEL_PARSER = new SpelExpressionParser();
+    private static final DefaultParameterNameDiscoverer PARAMETER_NAME_DISCOVERER = new DefaultParameterNameDiscoverer();
 
     private final RedissonClient redissonClient;
     private final DistributeLockProperties properties;
@@ -87,9 +88,16 @@ public class DistributeLockAspect {
         long leaseTime = resolveTime(distributeLock.leaseTime(), properties.getLeaseTime(), DistributeLockConfigConstant.DEFAULT_LEASE_TIME),
                 waitTime = resolveTime(distributeLock.waitTime(), properties.getWaitTime(), DistributeLockConfigConstant.DEFAULT_WAIT_TIME);
 
+        String[] parameterNames = getParameterNames(method);
+        boolean hasSpelExpression = (keys != null && keys.length > 0) || StringUtils.isNotBlank(key);
+        if (parameterNames == null && hasSpelExpression) {
+            log.warn("[DistributeLock] Unable to discover parameter names for method {}.{} -- compile with -parameters flag or enable debug info (-g), otherwise SpEL key expressions may not resolve correctly",
+                    method.getDeclaringClass().getSimpleName(), method.getName());
+        }
+
         String lockKey;
         if (keys != null && keys.length > 0) {
-            Map<String, Object> args = combineArgs(getParameterNames(method), pjp.getArgs());
+            Map<String, Object> args = combineArgs(parameterNames, pjp.getArgs());
             String parsedKey = Arrays.stream(keys)
                     .filter(StringUtils::isNotBlank)
                     .map(keyExpression -> analyseKeyExpression(keyExpression, args))
@@ -97,7 +105,8 @@ public class DistributeLockAspect {
                     .collect(Collectors.joining("."));
             lockKey = StringUtils.isNotBlank(parsedKey) ? keyPrefix + scene + "#" + parsedKey : keyPrefix + scene;
         } else if (StringUtils.isNotBlank(key)) {
-            String parsedKey = analyseKeyExpression(key, combineArgs(getParameterNames(method), pjp.getArgs()));
+            Map<String, Object> args = combineArgs(parameterNames, pjp.getArgs());
+            String parsedKey = analyseKeyExpression(key, args);
             lockKey = keyPrefix + scene + "#" + parsedKey;
         } else {
             lockKey = keyPrefix + scene;
@@ -234,7 +243,7 @@ public class DistributeLockAspect {
     }
 
     private String[] getParameterNames(Method method) {
-        return new DefaultParameterNameDiscoverer().getParameterNames(method);
+        return PARAMETER_NAME_DISCOVERER.getParameterNames(method);
     }
 
     private Map<String, Object> combineArgs(String[] parameterNames, Object[] args) {

@@ -73,6 +73,7 @@ cn.dicraft
 - **Lombok**：所有类使用 `@Slf4j`、`@RequiredArgsConstructor`、`@Getter`
 - **构造器注入**：字段为 `private final`，通过 Lombok 生成的构造器注入
 - **Guard Clause**：遇到 null/空值提前返回
+- **防御性日志**：对可能静默失败的场景记录 warning（如缺少 `-parameters` 编译选项导致 SpEL 参数名无法解析）
 - **快速失败**：加锁失败立即抛 `DistributeLockException`
 - **try/finally**：锁释放始终在 `finally` 块中
 - **@Order(Integer.MIN_VALUE)**：切面以最高优先级执行
