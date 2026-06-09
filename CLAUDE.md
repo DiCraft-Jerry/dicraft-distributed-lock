@@ -73,6 +73,7 @@ Auto-config registration exists in both:
 - **Lombok**: `@Slf4j`, `@RequiredArgsConstructor`, `@Getter` on all classes
 - **Constructor injection**: fields are `private final`, injected via Lombok-generated constructor
 - **Guard clauses**: early return for null/empty checks
+- **Defensive logging**: warn when silent failures could occur (e.g. SpEL parameter name resolution fails with `-parameters` missing)
 - **Fail-fast**: throw `DistributeLockException` immediately on lock acquisition failure
 - **try/finally**: lock release always in `finally` block
 - **@Order(Integer.MIN_VALUE)**: aspect runs with highest precedence
